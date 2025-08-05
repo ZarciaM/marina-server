@@ -9,31 +9,43 @@ MARINA_BIN = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'mari
 def home():
     return 'Marina API is running behind Docker & HTTPS!'
 
+@app.route('/marina', methods=['GET'])
+def evaluate_formula():
+    prop = request.args.get('laza')
+    if prop is None or not prop.strip():
+        response = {
+            "success": False,
+            "message": "Le paramètre 'laza' est requis et ne peut pas être vide."
+        }
+        return jsonify(response), 400
 
-@app.route('/evaluate', methods=['POST'])
-def evaluate():
-    if not request.is_json:
-        return jsonify({"error": "Invalid or missing JSON"}), 400
+    process = subprocess.run(
+        [MARINA_BIN, prop],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
 
-    data = request.get_json(force=True)
-    formula = data.get("formula")
-    values = data.get("values")
-
-    if not formula or values is None:
-        return jsonify({"error": "Missing 'formula' or 'values'"}), 400
-
-    cmd = [MARINA_BIN, formula] + values
-    try:
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+    if process.returncode == 0:
         return jsonify({
-            "input": cmd,
-            "output": result.stdout.strip()
-        })
-    except subprocess.CalledProcessError as e:
+            "success": True,
+            "formula": prop,
+            "result": process.stdout.strip()
+        }), 200
+    elif process.returncode == 127:
         return jsonify({
-            "error": e.stderr.strip(),
-            "exit_code": e.returncode
+            "success": False,
+            "message": "L'exécutable Marina n'a pas été trouvé ou n'est pas exécutable."
         }), 500
+    else:
+        return jsonify({
+            "success": False,
+            "formula": prop,
+            "error": process.stderr.strip(),
+            "code": process.returncode
+        }), 400
+
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
