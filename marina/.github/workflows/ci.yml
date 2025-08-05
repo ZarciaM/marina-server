@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:
+
+
+jobs:
+  tests:
+
+    strategy:
+      matrix:
+        os:
+          - macos-15
+          - ubuntu-24.04
+        ocaml-compiler:
+          - 4.13.x
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: ocaml/setup-ocaml@v3.4.0
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
+      - name: Build and test
+        run: |
+          opam install ocamlfind ounit2
+          eval $(opam env)
+          make
+          make test

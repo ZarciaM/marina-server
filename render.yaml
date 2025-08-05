@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: marina-server
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
